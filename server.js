@@ -36,7 +36,7 @@ app.get('/api/room/:code', async (req, res) => {
       return res.status(404).json({ error: 'Комната не найдена' });
     }
     const tracks = await pool.query(
-      'SELECT id, title, artist, added_by, url FROM tracks WHERE room_id = $1 ORDER BY created_at ASC', 
+      'SELECT id, title, artist, added_by, url, cover_url FROM tracks WHERE room_id = $1 ORDER BY created_at ASC', 
       [room.rows[0].id]
     );
     res.json({ room: room.rows[0], tracks: tracks.rows });
@@ -48,13 +48,13 @@ app.get('/api/room/:code', async (req, res) => {
 app.post('/api/room/:code/add-track', async (req, res) => {
   try {
     const { code } = req.params;
-    const { title, artist, added_by, url } = req.body;
+    const { title, artist, added_by, url, cover_url } = req.body;
     const room = await pool.query('SELECT id FROM rooms WHERE code = $1', [code]);
     if (room.rows.length === 0) return res.status(404).json({ error: 'Комната не найдена' });
 
     const newTrack = await pool.query(
-      'INSERT INTO tracks (room_id, title, artist, added_by, url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [room.rows[0].id, title, artist, added_by, url]
+      'INSERT INTO tracks (room_id, title, artist, added_by, url, cover_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [room.rows[0].id, title, artist, added_by, url, cover_url]
     );
     res.json({ success: true, track: newTrack.rows[0] });
   } catch (err) {
@@ -62,7 +62,6 @@ app.post('/api/room/:code/add-track', async (req, res) => {
   }
 });
 
-// Удаление трека
 app.delete('/api/track/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -73,7 +72,6 @@ app.delete('/api/track/:id', async (req, res) => {
   }
 });
 
-// Переименование трека
 app.put('/api/track/:id', async (req, res) => {
   try {
     const { id } = req.params;
