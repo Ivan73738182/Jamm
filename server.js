@@ -83,6 +83,43 @@ app.put('/api/track/:id', async (req, res) => {
   }
 });
 
+// --- НОВЫЕ ЭНДПОИНТЫ ДЛЯ ЧАТА ---
+
+// Получить сообщения комнаты
+app.get('/api/room/:code/messages', async (req, res) => {
+  try {
+    const { code } = req.params;
+    const room = await pool.query('SELECT id FROM rooms WHERE code = $1', [code]);
+    if (room.rows.length === 0) return res.status(404).json({ error: 'Комната не найдена' });
+
+    const messages = await pool.query(
+      'SELECT id, sender_name, text, created_at FROM messages WHERE room_id = $1 ORDER BY created_at ASC',
+      [room.rows[0].id]
+    );
+    res.json({ messages: messages.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка получения сообщений' });
+  }
+});
+
+// Отправить сообщение
+app.post('/api/room/:code/messages', async (req, res) => {
+  try {
+    const { code } = req.params;
+    const { sender_name, text } = req.body;
+    const room = await pool.query('SELECT id FROM rooms WHERE code = $1', [code]);
+    if (room.rows.length === 0) return res.status(404).json({ error: 'Комната не найдена' });
+
+    const newMessage = await pool.query(
+      'INSERT INTO messages (room_id, sender_name, text) VALUES ($1, $2, $3) RETURNING *',
+      [room.rows[0].id, sender_name, text]
+    );
+    res.json({ success: true, message: newMessage.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка отправки сообщения' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
